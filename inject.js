@@ -2,16 +2,16 @@ var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 
 var tc = {
   settings: {
-    lastSpeed: 1.0, // default 1x
-    enabled: true, // default enabled
-    speeds: {}, // empty object to hold speed for each source
+    lastSpeed: 1.0, 
+    enabled: true, 
+    speeds: {}, 
 
-    displayKeyCode: 86, // default: V
-    rememberSpeed: false, // default: false
-    forceLastSavedSpeed: false, //default: false
-    audioBoolean: false, // default: false
-    startHidden: false, // default: false
-    controllerOpacity: 0.3, // default: 0.3
+    displayKeyCode: 86, 
+    rememberSpeed: false, 
+    forceLastSavedSpeed: false, 
+    audioBoolean: false, 
+    startHidden: false, 
+    controllerOpacity: 0.3, 
     keyBindings: [],
     blacklist: `\
       www.instagram.com
@@ -24,17 +24,16 @@ var tc = {
     logLevel: 3
   },
 
-  // Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
   mediaElements: []
 };
 
-/* Log levels (depends on caller specifying the correct level)
-  1 - none
-  2 - error
-  3 - warning
-  4 - info
-  5 - debug
-  6 - debug high verbosity + stack trace on each message
+/* Log levels 
+  1  none
+  2  error
+  3  warning
+  4  info
+  5  debug
+  6  debug high verbosity
 */
 function log(message, level) {
   verbosity = tc.settings.logLevel;
@@ -58,52 +57,51 @@ function log(message, level) {
 }
 
 chrome.storage.sync.get(tc.settings, function (storage) {
-  tc.settings.keyBindings = storage.keyBindings; // Array
+  tc.settings.keyBindings = storage.keyBindings; 
   if (storage.keyBindings.length == 0) {
-    // if first initialization of 0.5.3
-    // UPDATE
+    
     tc.settings.keyBindings.push({
       action: "slower",
       key: Number(storage.slowerKeyCode) || 83,
       value: Number(storage.speedStep) || 0.1,
       force: false,
       predefined: true
-    }); // default S
+    }); 
     tc.settings.keyBindings.push({
       action: "faster",
       key: Number(storage.fasterKeyCode) || 68,
       value: Number(storage.speedStep) || 0.1,
       force: false,
       predefined: true
-    }); // default: D
+    }); 
     tc.settings.keyBindings.push({
       action: "rewind",
       key: Number(storage.rewindKeyCode) || 90,
       value: Number(storage.rewindTime) || 10,
       force: false,
       predefined: true
-    }); // default: Z
+    }); 
     tc.settings.keyBindings.push({
       action: "advance",
       key: Number(storage.advanceKeyCode) || 88,
       value: Number(storage.advanceTime) || 10,
       force: false,
       predefined: true
-    }); // default: X
+    }); 
     tc.settings.keyBindings.push({
       action: "reset",
       key: Number(storage.resetKeyCode) || 82,
       value: 1.0,
       force: false,
       predefined: true
-    }); // default: R
+    }); 
     tc.settings.keyBindings.push({
       action: "fast",
       key: Number(storage.fastKeyCode) || 71,
       value: Number(storage.fastSpeed) || 1.8,
       force: false,
       predefined: true
-    }); // default: G
+    }); 
     tc.settings.version = "0.5.3";
 
     chrome.storage.sync.set({
@@ -129,7 +127,6 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);
   tc.settings.blacklist = String(storage.blacklist);
 
-  // ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
   if (
     tc.settings.keyBindings.filter((x) => x.action == "display").length == 0
   ) {
@@ -139,7 +136,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       value: 0,
       force: false,
       predefined: true
-    }); // default V
+    }); 
   }
 
   initializeWhenReady(document);
@@ -160,18 +157,6 @@ function setKeyBindings(action, value) {
 }
 
 function defineVideoController() {
-  // Data structures
-  // ---------------
-  // videoController (JS object) instances:
-  //   video = AUDIO/VIDEO DOM element
-  //   parent = A/V DOM element's parentElement OR
-  //            (A/V elements discovered from the Mutation Observer)
-  //            A/V element's parentNode OR the node whose children changed.
-  //   div = Controller's DOM element (which happens to be a DIV)
-  //   speedIndicator = DOM element in the Controller of the speed indicator
-
-  // added to AUDIO / VIDEO DOM elements
-  //    vsc = reference to the videoController
   tc.videoController = function (target, parent) {
     if (target.vsc) {
       return target.vsc;
@@ -190,7 +175,7 @@ function defineVideoController() {
         );
         storedSpeed = 1.0;
       }
-      setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+      setKeyBindings("reset", getKeyBindings("fast")); 
     } else {
       log("Recalling stored speed due to rememberSpeed being enabled", 5);
       storedSpeed = tc.settings.lastSpeed;
@@ -205,23 +190,20 @@ function defineVideoController() {
       storedSpeed = tc.settings.speeds[event.target.currentSrc];
       if (!tc.settings.rememberSpeed) {
         if (!storedSpeed) {
-          log("Overwriting stored speed to 1.0 (rememberSpeed not enabled)", 4);
+          log("Overwriting stored speed to 1.0", 4);
           storedSpeed = 1.0;
         }
-        // resetSpeed isn't really a reset, it's a toggle
+        
         log("Setting reset keybinding to fast", 5);
-        setKeyBindings("reset", getKeyBindings("fast")); // resetSpeed = fastSpeed
+        setKeyBindings("reset", getKeyBindings("fast")); 
       } else {
         log(
-          "Storing lastSpeed into tc.settings.speeds (rememberSpeed enabled)",
+          "Storing lastSpeed into tc.settings.speeds",
           5
         );
         storedSpeed = tc.settings.lastSpeed;
       }
-      // TODO: Check if explicitly setting the playback rate to 1.0 is
-      // necessary when rememberSpeed is disabled (this may accidentally
-      // override a website's intentional initial speed setting interfering
-      // with the site's default behavior)
+      
       log("Explicitly setting playbackRate to: " + storedSpeed, 4);
       setSpeed(event.target, storedSpeed);
     };
@@ -348,24 +330,16 @@ function defineVideoController() {
       case location.hostname == "www.amazon.com":
       case location.hostname == "www.reddit.com":
       case /hbogo\./.test(location.hostname):
-        // insert before parent to bypass overlay
         this.parent.parentElement.insertBefore(fragment, this.parent);
         break;
       case location.hostname == "www.facebook.com":
-        // this is a monstrosity but new FB design does not have *any*
-        // semantic handles for us to traverse the tree, and deep nesting
-        // that we need to bubble up from to get controller to stack correctly
         let p = this.parent.parentElement.parentElement.parentElement
           .parentElement.parentElement.parentElement.parentElement;
         p.insertBefore(fragment, p.firstChild);
         break;
       case location.hostname == "tv.apple.com":
-        // insert after parent for correct stacking context
         this.parent.getRootNode().querySelector(".scrim").prepend(fragment);
       default:
-        // Note: when triggered via a MutationRecord, it's possible that the
-        // target is not the immediate parent. This appends the controller as
-        // the first element of the target, which may not be the parent.
         this.parent.insertBefore(fragment, this.parent.firstChild);
     }
     return wrapper;
@@ -416,16 +390,7 @@ function refreshCoolDown() {
 }
 
 function setupListener() {
-  /**
-   * This function is run whenever a video speed rate change occurs.
-   * It is used to update the speed that shows up in the display as well as save
-   * that latest speed into the local storage.
-   *
-   * @param {*} video The video element to update the speed indicators for.
-   */
   function updateSpeedFromEvent(video) {
-    // It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
-    // a video controller attached to it.  If we do, ignore it.
     if (!video.vsc)
       return;
     var speedIndicator = video.vsc.speedIndicator;
@@ -437,13 +402,12 @@ function setupListener() {
     log("Updating controller with new speed", 5);
     speedIndicator.textContent = speed.toFixed(2);
     tc.settings.speeds[src] = speed;
-    log("Storing lastSpeed in settings for the rememberSpeed feature", 5);
+    log("Storing lastSpeed in settings", 5);
     tc.settings.lastSpeed = speed;
-    log("Syncing chrome settings for lastSpeed", 5);
+    log("Syncing chrome settings", 5);
     chrome.storage.sync.set({ lastSpeed: speed }, function () {
       log("Speed setting saved: " + speed, 5);
     });
-    // show the controller for 1000ms if it's hidden.
     runAction("blink", null, null);
   }
 
@@ -456,10 +420,6 @@ function setupListener() {
       }
       var video = event.target;
 
-      /**
-       * If the last speed is forced, only update the speed based on events created by
-       * video speed instead of all video speed change events.
-       */
       if (tc.settings.forceLastSavedSpeed) {
         if (event.detail && event.detail.origin === "videoSpeed") {
           video.playbackRate = event.detail.speed;
@@ -526,17 +486,35 @@ function getShadow(parent) {
 function initializeNow(document) {
   log("Begin initializeNow", 5);
   if (!tc.settings.enabled) return;
-  // enforce init-once due to redundant callers
   if (!document.body || document.body.classList.contains("vsc-initialized")) {
     return;
   }
   try {
     setupListener();
   } catch {
-    // no operation
+    
   }
+
+  if (!window.vscMessageListenerAdded) {
+    window.addEventListener("message", function(event) {
+      if (event.data && event.data.vscCommand) {
+        
+        if (tc.mediaElements.length) {
+          runAction(event.data.action, event.data.value);
+        }
+        
+        document.querySelectorAll("iframe").forEach(iframe => {
+          if (iframe.contentWindow !== event.source) {
+            try { iframe.contentWindow.postMessage(event.data, "*"); } catch (e) {}
+          }
+        });
+      }
+    });
+    window.vscMessageListenerAdded = true;
+  }
+
   document.body.classList.add("vsc-initialized");
-  log("initializeNow: vsc-initialized added to document body", 5);
+  log("initializeNow: initialization added to document body", 5);
 
   if (document === window.document) {
     defineVideoController();
@@ -547,64 +525,81 @@ function initializeNow(document) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
   }
-  var docs = Array(document);
+  
+  var windowTargets = [window];
   try {
-    if (inIframe()) docs.push(window.top.document);
+    if (inIframe()) windowTargets.push(window.top);
   } catch (e) {}
 
-  docs.forEach(function (doc) {
-    doc.addEventListener(
-      "keydown",
-      function (event) {
-        var keyCode = event.keyCode;
-        log("Processing keydown event: " + keyCode, 6);
+  windowTargets.forEach(function (win) {
+    try {
+      win.addEventListener(
+        "keydown",
+        function (event) {
+          var keyCode = event.keyCode;
+          log("Processing keydown event: " + keyCode, 6);
 
-        // Ignore if following modifier is active.
-        if (
-          !event.getModifierState ||
-          event.getModifierState("Alt") ||
-          event.getModifierState("Control") ||
-          event.getModifierState("Fn") ||
-          event.getModifierState("Meta") ||
-          event.getModifierState("Hyper") ||
-          event.getModifierState("OS")
-        ) {
-          log("Keydown event ignored due to active modifier: " + keyCode, 5);
-          return;
-        }
-
-        // Ignore keydown event if typing in an input box
-        if (
-          event.target.nodeName === "INPUT" ||
-          event.target.nodeName === "TEXTAREA" ||
-          event.target.isContentEditable
-        ) {
-          return false;
-        }
-
-        // Ignore keydown event if typing in a page without vsc
-        if (!tc.mediaElements.length) {
-          return false;
-        }
-
-        var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
-        if (item) {
-          runAction(item.action, item.value);
-          if (item.force === "true") {
-            // disable websites key bindings
-            event.preventDefault();
-            event.stopPropagation();
+          if (
+            !event.getModifierState ||
+            event.getModifierState("Alt") ||
+            event.getModifierState("Control") ||
+            event.getModifierState("Fn") ||
+            event.getModifierState("Meta") ||
+            event.getModifierState("Hyper") ||
+            event.getModifierState("OS")
+          ) {
+            log("Keydown event ignored due to active modifier: " + keyCode, 5);
+            return;
           }
-        }
 
-        return false;
-      },
-      true
-    );
+          // Ignore keydown event if typing in a text field
+          var isTextEntry = event.target.isContentEditable || event.target.nodeName === "TEXTAREA";
+          
+          if (event.target.nodeName === "INPUT") {
+            // Only ignore text-based inputs, allow range sliders, buttons, etc.
+            var textTypes = ["text", "password", "email", "search", "tel", "url", "number"];
+            if (textTypes.includes(event.target.type.toLowerCase())) {
+              isTextEntry = true;
+            }
+          }
+
+          if (isTextEntry) {
+            return false;
+          }
+
+          var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
+          if (item) {
+            
+            if (tc.mediaElements.length) {
+              runAction(item.action, item.value);
+            }
+
+            let payload = { vscCommand: true, action: item.action, value: item.value };
+            
+            try {
+              if (window !== window.top) window.top.postMessage(payload, "*");
+            } catch (e) {}
+
+            document.querySelectorAll("iframe").forEach(iframe => {
+              try { iframe.contentWindow.postMessage(payload, "*"); } catch (e) {}
+            });
+
+            if (item.force === "true") {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }
+
+          return false;
+        },
+        true
+      );
+    } catch (err) {
+      log("Security block prevented binding to parent window", 5);
+    }
   });
 
   function checkForVideo(node, parent, added) {
-    // Only proceed with supposed removal if node is missing from DOM
     if (!added && document.body.contains(node)) {
       return;
     }
@@ -628,7 +623,6 @@ function initializeNow(document) {
   }
 
   var observer = new MutationObserver(function (mutations) {
-    // Process the DOM nodes lazily
     requestIdleCallback(
       (_) => {
         mutations.forEach(function (mutation) {
@@ -683,7 +677,6 @@ function initializeNow(document) {
 
   var frameTags = document.getElementsByTagName("iframe");
   Array.prototype.forEach.call(frameTags, function (frame) {
-    // Ignore frames we don't have permission to access (different origin).
     try {
       var childDocument = frame.contentDocument;
     } catch (e) {
@@ -718,7 +711,6 @@ function runAction(action, value, e) {
 
   var mediaTags = tc.mediaElements;
 
-  // Get the controller that was used if called from a button press event e
   if (e) {
     var targetController = e.target.getRootNode().host;
   }
@@ -726,7 +718,6 @@ function runAction(action, value, e) {
   mediaTags.forEach(function (v) {
     var controller = v.vsc.div;
 
-    // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
       return;
     }
@@ -742,8 +733,7 @@ function runAction(action, value, e) {
         v.currentTime += value;
       } else if (action === "faster") {
         log("Increase speed", 5);
-        // Maximum playback speed in Chrome is set to 16:
-        // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
+        
         var s = Math.min(
           (v.playbackRate < 0.1 ? 0.0 : v.playbackRate) + value,
           16
@@ -751,8 +741,7 @@ function runAction(action, value, e) {
         setSpeed(v, s);
       } else if (action === "slower") {
         log("Decrease speed", 5);
-        // Video min rate is 0.0625:
-        // https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
+        
         var s = Math.max(v.playbackRate - value, 0.07);
         setSpeed(v, s);
       } else if (action === "reset") {
@@ -764,7 +753,7 @@ function runAction(action, value, e) {
         controller.classList.toggle("vsc-hidden");
       } else if (action === "blink") {
         log("Showing controller momentarily", 5);
-        // if vsc is hidden, show it briefly to give the use visual feedback that the action is excuted.
+        
         if (
           controller.classList.contains("vsc-hidden") ||
           controller.blinkTimeOut !== undefined
@@ -814,15 +803,15 @@ function resetSpeed(v, target) {
         log("Resetting playback speed to 1.0", 4);
         setSpeed(v, 1.0);
       } else {
-        log('Toggling playback speed to "fast" speed', 4);
+        log('Toggling playback speed to fast', 4);
         setSpeed(v, getKeyBindings("fast"));
       }
     } else {
-      log('Toggling playback speed to "reset" speed', 4);
+      log('Toggling playback speed to reset', 4);
       setSpeed(v, getKeyBindings("reset"));
     }
   } else {
-    log('Toggling playback speed to "reset" speed', 4);
+    log('Toggling playback speed to reset', 4);
     setKeyBindings("reset", v.playbackRate);
     setSpeed(v, target);
   }
@@ -848,7 +837,6 @@ function handleDrag(video, e) {
   const controller = video.vsc.div;
   const shadowController = controller.shadowRoot.querySelector("#controller");
 
-  // Find nearest parent of same size as video parent.
   var parentElement = controller.parentElement;
   while (
     parentElement.parentNode &&
