@@ -102,6 +102,13 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     }); 
+    tc.settings.keyBindings.push({
+      action: "resetRatio",
+      key: 65,
+      value: 0,
+      force: false,
+      predefined: true
+    });
     tc.settings.version = "0.5.3";
 
     chrome.storage.sync.set({
@@ -137,6 +144,18 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     }); 
+  }
+
+  if (
+    tc.settings.keyBindings.filter((x) => x.action == "resetRatio").length == 0
+  ) {
+    tc.settings.keyBindings.push({
+      action: "resetRatio",
+      key: 65,
+      value: 0,
+      force: false,
+      predefined: true
+    });
   }
 
   initializeWhenReady(document);
@@ -772,6 +791,8 @@ function runAction(action, value, e) {
         handleDrag(v, e);
       } else if (action === "fast") {
         resetSpeed(v, value);
+      } else if (action === "resetRatio") {
+        resetVideoRatio(v);
       } else if (action === "pause") {
         pause(v);
       } else if (action === "muted") {
@@ -814,6 +835,17 @@ function resetSpeed(v, target) {
     log('Toggling playback speed to reset', 4);
     setKeyBindings("reset", v.playbackRate);
     setSpeed(v, target);
+  }
+}
+
+function resetVideoRatio(v) {
+  log("Reset video ratio", 5);
+  v.style.transform = "none";
+  v.style.scale = "1";
+  v.style.objectFit = "contain";
+
+  if (v.videoWidth && v.videoHeight) {
+    v.style.aspectRatio = v.videoWidth + " / " + v.videoHeight;
   }
 }
 

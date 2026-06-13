@@ -16,7 +16,8 @@ var tcDefaults = {
     { action: "rewind", key: 90, value: 10, force: false, predefined: true }, // Z
     { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
-    { action: "fast", key: 71, value: 1.8, force: false, predefined: true } // G
+    { action: "fast", key: 71, value: 1.8, force: false, predefined: true }, // G
+    { action: "resetRatio", key: 65, value: 0, force: false, predefined: true } // A
   ],
   blacklist: `www.instagram.com
     twitter.com
@@ -130,7 +131,7 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
 }
 
 // List of custom actions for which customValue should be disabled
-var customActionsNoValues = ["pause", "muted", "mark", "jump", "display"];
+var customActionsNoValues = ["pause", "muted", "mark", "jump", "display", "resetRatio"];
 
 function add_shortcut() {
   var html = `<select class="customDo">
@@ -140,6 +141,7 @@ function add_shortcut() {
     <option value="advance">Advance</option>
     <option value="reset">Reset speed</option>
     <option value="fast">Preferred speed</option>
+    <option value="resetRatio">Reset video ratio</option>
     <option value="muted">Mute</option>
     <option value="pause">Pause</option>
     <option value="mark">Set marker</option>
@@ -271,6 +273,17 @@ function restore_options() {
     if (storage.keyBindings.filter((x) => x.action == "display").length == 0) {
       storage.keyBindings.push({
         action: "display",
+        value: 0,
+        force: false,
+        predefined: true
+      });
+    }
+
+    // ensure that there is a "resetRatio" binding for upgrades from versions without it
+    if (storage.keyBindings.filter((x) => x.action == "resetRatio").length == 0) {
+      storage.keyBindings.push({
+        action: "resetRatio",
+        key: 65,
         value: 0,
         force: false,
         predefined: true

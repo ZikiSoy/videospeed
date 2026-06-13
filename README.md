@@ -43,6 +43,7 @@ even better, simply use your keyboard:
 - **Z** - rewind video by 10 seconds.
 - **X** - advance video by 10 seconds.
 - **G** - toggle between current and user configurable preferred speed.
+- **A** - reset video ratio.
 - **V** - show/hide the controller.
 
 You can customize and reassign the default shortcut keys in the extensions
