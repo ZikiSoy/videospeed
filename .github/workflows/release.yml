@@ -1,0 +1,99 @@
+name: Release Firefox extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install web-ext
+        run: npm install --global web-ext
+
+      - name: Prepare extension source
+        id: extension
+        run: |
+          set -euo pipefail
+
+          version="$(node -p "require('./manifest.json').version")"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [ "${tag_version}" != "${version}" ]; then
+              echo "Tag ${GITHUB_REF_NAME} does not match manifest.json version ${version}." >&2
+              exit 1
+            fi
+          fi
+
+          mkdir -p build/extension
+          cp manifest.json *.html *.css *.js build/extension/
+          cp -R icons build/extension/icons
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Lint extension
+        run: web-ext lint --source-dir build/extension
+
+      - name: Build unsigned package
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+          web-ext build \
+            --source-dir build/extension \
+            --artifacts-dir dist \
+            --overwrite-dest
+
+          mv dist/*.zip "dist/videospeed-firefox-${{ steps.extension.outputs.version }}-unsigned.zip"
+
+      - name: Sign extension with AMO
+        if: ${{ env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' }}
+        run: |
+          set -euo pipefail
+
+          web-ext sign \
+            --source-dir build/extension \
+            --artifacts-dir dist \
+            --channel unlisted \
+            --api-key "${AMO_JWT_ISSUER}" \
+            --api-secret "${AMO_JWT_SECRET}"
+
+          signed_xpi="$(find dist -maxdepth 1 -name '*.xpi' -print -quit)"
+          if [ -z "${signed_xpi}" ]; then
+            echo "AMO signing completed, but no signed .xpi was found in dist." >&2
+            exit 1
+          fi
+
+          mv "${signed_xpi}" "dist/videospeed-firefox-${{ steps.extension.outputs.version }}-signed.xpi"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.extension.outputs.version }}
+          name: v${{ steps.extension.outputs.version }}
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            Firefox extension build for version ${{ steps.extension.outputs.version }}.
+
+            - Use the signed `.xpi` for normal Firefox installs.
+            - The unsigned `.zip` is provided for source inspection or temporary debugging installs.

@@ -79,6 +79,35 @@ in Firefox. This repo is the code behind the [Firefox Extension](https://addons.
 whereas the [`igrigorik/videospeed`](https://github.com/igrigorik/videospeed)
 repository contains the code behind the [Chrome Extension](https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk).
 
+### GitHub releases
+
+This repository includes a GitHub Actions workflow that builds release assets
+when a version tag is pushed.
+
+1. Update the `version` field in `manifest.json`.
+2. Commit the version change.
+3. Create and push a matching tag:
+
+   ```sh
+   git tag v0.6.3.3
+   git push origin v0.6.3.3
+   ```
+
+The workflow always uploads an unsigned `.zip` package. That file can be used
+for source inspection or temporary debugging installs from
+`about:debugging#/runtime/this-firefox`.
+
+For normal Firefox installs from a downloaded release asset, Mozilla requires a
+signed `.xpi`. To have the workflow attach a signed `.xpi`, create an API key in
+the Mozilla Add-ons developer hub and add these repository secrets:
+
+- `AMO_JWT_ISSUER`
+- `AMO_JWT_SECRET`
+
+When those secrets are present, the workflow signs the extension as an unlisted
+AMO submission and uploads `videospeed-firefox-<version>-signed.xpi` to the
+GitHub release.
+
 ### License
 
 (MIT License) - Copyright (c) 2014 Ilya Grigorik
