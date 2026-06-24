@@ -1,5 +1,18 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 
+function debugConsole(message, details) {
+  if (typeof tc === "undefined" || !tc.settings.debugLogging) {
+    return;
+  }
+
+  var prefix = "[VideoSpeed Debug] ";
+  if (details !== undefined) {
+    console.error(prefix + message, details);
+  } else {
+    console.error(prefix + message);
+  }
+}
+
 var tc = {
   settings: {
     lastSpeed: 1.0, 
@@ -11,6 +24,7 @@ var tc = {
     forceLastSavedSpeed: false, 
     audioBoolean: false, 
     startHidden: false, 
+    debugLogging: false,
     controllerOpacity: 0.3, 
     keyBindings: [],
     blacklist: `\
@@ -42,18 +56,52 @@ function log(message, level) {
   }
   if (verbosity >= level) {
     if (level === 2) {
-      console.log("ERROR:" + message);
+      console.log("[VideoSpeed] ERROR:" + message);
     } else if (level === 3) {
-      console.log("WARNING:" + message);
+      console.log("[VideoSpeed] WARNING:" + message);
     } else if (level === 4) {
-      console.log("INFO:" + message);
+      console.log("[VideoSpeed] INFO:" + message);
     } else if (level === 5) {
-      console.log("DEBUG:" + message);
+      console.log("[VideoSpeed] DEBUG:" + message);
     } else if (level === 6) {
-      console.log("DEBUG (VERBOSE):" + message);
+      console.log("[VideoSpeed] DEBUG (VERBOSE):" + message);
       console.trace();
     }
   }
+}
+
+function getFrameContext() {
+  try {
+    return window === window.top ? "top" : "iframe";
+  } catch (e) {
+    return "iframe-cross-origin";
+  }
+}
+
+function describeMediaElement(v) {
+  return [
+    v.nodeName,
+    "src=" + (v.currentSrc || v.src || "none"),
+    "readyState=" + v.readyState,
+    "size=" + v.videoWidth + "x" + v.videoHeight,
+    "client=" + v.clientWidth + "x" + v.clientHeight,
+    "classes=" + (v.className || "none")
+  ].join(", ");
+}
+
+function getRatioDebugState(v) {
+  var computed = window.getComputedStyle(v);
+  return [
+    "inlineTransform=" + (v.style.transform || "empty"),
+    "inlineScale=" + (v.style.scale || "empty"),
+    "inlineObjectFit=" + (v.style.objectFit || "empty"),
+    "inlineAspectRatio=" + (v.style.aspectRatio || "empty"),
+    "computedTransform=" + computed.transform,
+    "computedObjectFit=" + computed.objectFit,
+    "computedAspectRatio=" + computed.aspectRatio,
+    "client=" + v.clientWidth + "x" + v.clientHeight,
+    "natural=" + v.videoWidth + "x" + v.videoHeight
+  ].join(", ");
 }
 
 chrome.storage.sync.get(tc.settings, function (storage) {
@@ -119,6 +167,7 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       forceLastSavedSpeed: tc.settings.forceLastSavedSpeed,
       audioBoolean: tc.settings.audioBoolean,
       startHidden: tc.settings.startHidden,
+      debugLogging: tc.settings.debugLogging,
       enabled: tc.settings.enabled,
       controllerOpacity: tc.settings.controllerOpacity,
       blacklist: tc.settings.blacklist.replace(regStrip, "")
@@ -131,8 +180,20 @@ chrome.storage.sync.get(tc.settings, function (storage) {
   tc.settings.audioBoolean = Boolean(storage.audioBoolean);
   tc.settings.enabled = Boolean(storage.enabled);
   tc.settings.startHidden = Boolean(storage.startHidden);
+  tc.settings.debugLogging = Boolean(storage.debugLogging);
+  tc.settings.logLevel = tc.settings.debugLogging ? 5 : 3;
   tc.settings.controllerOpacity = Number(storage.controllerOpacity);
   tc.settings.blacklist = String(storage.blacklist);
+
+  debugConsole("content script active", {
+    href: location.href,
+    readyState: document.readyState
+  });
+  debugConsole("storage loaded", {
+    href: location.href,
+    keyBindings: storage.keyBindings,
+    enabled: storage.enabled
+  });
 
   if (
     tc.settings.keyBindings.filter((x) => x.action == "display").length == 0
@@ -157,6 +218,13 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       predefined: true
     });
   }
+
+  log(
+    "Loaded settings on " + location.hostname + " in " + getFrameContext() +
+      ": enabled=" + tc.settings.enabled +
+      ", bindings=" + JSON.stringify(tc.settings.keyBindings),
+    5
+  );
 
   initializeWhenReady(document);
 });
@@ -517,9 +585,18 @@ function initializeNow(document) {
   if (!window.vscMessageListenerAdded) {
     window.addEventListener("message", function(event) {
       if (event.data && event.data.vscCommand) {
+        log(
+          "Received frame command action=" + event.data.action +
+            ", value=" + event.data.value +
+            ", mediaElements=" + tc.mediaElements.length +
+            ", frame=" + getFrameContext(),
+          5
+        );
         
         if (tc.mediaElements.length) {
           runAction(event.data.action, event.data.value);
+        } else {
+          log("Frame command ignored because no media elements are registered", 5);
         }
         
         document.querySelectorAll("iframe").forEach(iframe => {
@@ -556,7 +633,13 @@ function initializeNow(document) {
         "keydown",
         function (event) {
           var keyCode = event.keyCode;
-          log("Processing keydown event: " + keyCode, 6);
+          log(
+            "Processing keydown event: keyCode=" + keyCode +
+              ", target=" + event.target.nodeName +
+              ", frame=" + getFrameContext() +
+              ", mediaElements=" + tc.mediaElements.length,
+            5
+          );
 
           if (
             !event.getModifierState ||
@@ -583,14 +666,24 @@ function initializeNow(document) {
           }
 
           if (isTextEntry) {
+            log("Keydown event ignored because target is text entry: " + event.target.nodeName, 5);
             return false;
           }
 
           var item = tc.settings.keyBindings.find((item) => item.key === keyCode);
           if (item) {
+            log(
+              "Matched key binding: action=" + item.action +
+                ", value=" + item.value +
+                ", force=" + item.force +
+                ", key=" + item.key,
+              5
+            );
             
             if (tc.mediaElements.length) {
               runAction(item.action, item.value);
+            } else {
+              log("Matched key binding but no media elements are registered", 4);
             }
 
             let payload = { vscCommand: true, action: item.action, value: item.value };
@@ -604,9 +697,12 @@ function initializeNow(document) {
             });
 
             if (item.force === "true") {
+              log("Preventing default website key binding for action=" + item.action, 5);
               event.preventDefault();
               event.stopPropagation();
             }
+          } else {
+            log("No VideoSpeed key binding matched keyCode=" + keyCode, 6);
           }
 
           return false;
@@ -627,9 +723,11 @@ function initializeNow(document) {
       (node.nodeName === "AUDIO" && tc.settings.audioBoolean)
     ) {
       if (added) {
+        log("Registering media element: " + describeMediaElement(node), 5);
         node.vsc = new tc.videoController(node, parent);
       } else {
         if (node.vsc) {
+          log("Removing media element: " + describeMediaElement(node), 5);
           node.vsc.remove();
         }
       }
@@ -690,7 +788,15 @@ function initializeNow(document) {
     var mediaTags = document.querySelectorAll("video");
   }
 
+  log(
+    "Initial media scan found " + mediaTags.length +
+      " element(s) on " + location.hostname +
+      " in " + getFrameContext(),
+    5
+  );
+
   mediaTags.forEach(function (video) {
+    log("Registering initial media element: " + describeMediaElement(video), 5);
     video.vsc = new tc.videoController(video);
   });
 
@@ -726,18 +832,26 @@ function setSpeed(video, speed) {
 }
 
 function runAction(action, value, e) {
-  log("runAction Begin", 5);
-
   var mediaTags = tc.mediaElements;
+  log(
+    "runAction begin: action=" + action +
+      ", value=" + value +
+      ", mediaElements=" + mediaTags.length +
+      ", frame=" + getFrameContext(),
+    5
+  );
 
   if (e) {
     var targetController = e.target.getRootNode().host;
+    log("runAction scoped to clicked controller", 5);
   }
 
   mediaTags.forEach(function (v) {
+    log("Evaluating media element for action=" + action + ": " + describeMediaElement(v), 5);
     var controller = v.vsc.div;
 
     if (e && !(targetController == controller)) {
+      log("Skipping media element because it is not the clicked controller target", 5);
       return;
     }
 
@@ -802,9 +916,11 @@ function runAction(action, value, e) {
       } else if (action === "jump") {
         jumpToMark(v);
       }
+    } else {
+      log("Skipping media element because it has vsc-cancelled class", 5);
     }
   });
-  log("runAction End", 5);
+  log("runAction end: action=" + action, 5);
 }
 
 function pause(v) {
@@ -839,7 +955,14 @@ function resetSpeed(v, target) {
 }
 
 function resetVideoRatio(v) {
-  log("Reset video ratio", 5);
+  log("Reset video ratio begin: " + getRatioDebugState(v), 4);
+  if (!v.videoWidth || !v.videoHeight) {
+    log(
+      "Cannot apply intrinsic aspect ratio yet because video metadata is missing",
+      5
+    );
+  }
+
   v.style.transform = "none";
   v.style.scale = "1";
   v.style.objectFit = "contain";
@@ -847,6 +970,7 @@ function resetVideoRatio(v) {
   if (v.videoWidth && v.videoHeight) {
     v.style.aspectRatio = v.videoWidth + " / " + v.videoHeight;
   }
+  log("Reset video ratio end: " + getRatioDebugState(v), 4);
 }
 
 function muted(v) {

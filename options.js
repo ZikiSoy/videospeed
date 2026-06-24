@@ -8,6 +8,7 @@ var tcDefaults = {
   startHidden: false, // default: false
   forceLastSavedSpeed: false, //default: false
   enabled: true, // default enabled
+  debugLogging: false, // default: false
   controllerOpacity: 0.3, // default: 0.3
   keyBindings: [
     { action: "display", key: 86, value: 0, force: false, predefined: true }, // V
@@ -218,6 +219,7 @@ function save_options() {
   var forceLastSavedSpeed = document.getElementById("forceLastSavedSpeed").checked;
   var audioBoolean = document.getElementById("audioBoolean").checked;
   var enabled = document.getElementById("enabled").checked;
+  var debugLogging = document.getElementById("debugLogging").checked;
   var startHidden = document.getElementById("startHidden").checked;
   var controllerOpacity = document.getElementById("controllerOpacity").value;
   var blacklist = document.getElementById("blacklist").value;
@@ -241,6 +243,7 @@ function save_options() {
       forceLastSavedSpeed: forceLastSavedSpeed,
       audioBoolean: audioBoolean,
       enabled: enabled,
+      debugLogging: debugLogging,
       startHidden: startHidden,
       controllerOpacity: controllerOpacity,
       keyBindings: keyBindings,
@@ -264,6 +267,7 @@ function restore_options() {
     document.getElementById("forceLastSavedSpeed").checked = storage.forceLastSavedSpeed;
     document.getElementById("audioBoolean").checked = storage.audioBoolean;
     document.getElementById("enabled").checked = storage.enabled;
+    document.getElementById("debugLogging").checked = storage.debugLogging;
     document.getElementById("startHidden").checked = storage.startHidden;
     document.getElementById("controllerOpacity").value =
       storage.controllerOpacity;
