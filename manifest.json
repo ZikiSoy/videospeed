@@ -1,13 +1,13 @@
 {
-  "name": "Video Speed Controller",
-  "short_name": "videospeed",
-  "version": "0.7",
+  "name": "Speedy Video Control",
+  "short_name": "Speedy",
+  "version": "0.7.1",
   "manifest_version": 2,
   "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
   "homepage_url": "https://github.com/ZikiSoy/videospeed",
   "browser_specific_settings": {
     "gecko": {
-      "id": "{7be2ba16-0f1e-4d93-9ebc-5164397477a9}",
+      "id": "{2517f7b2-46ce-4326-a1cf-573f725d2d84}",
       "data_collection_permissions": {
         "required": ["none"]
       }
