@@ -1,4 +1,15 @@
 var regStrip = /^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+var vscFrameId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+var vscHandledCommands = new Set();
+
+function recordHandledCommand(commandId) {
+  if (!commandId) return;
+  vscHandledCommands.add(commandId);
+  if (vscHandledCommands.size > 100) {
+    var first = vscHandledCommands.values().next().value;
+    vscHandledCommands.delete(first);
+  }
+}
 
 function debugConsole(message, details) {
   if (typeof tc === "undefined" || !tc.settings.debugLogging) {
@@ -157,6 +168,13 @@ chrome.storage.sync.get(tc.settings, function (storage) {
       force: false,
       predefined: true
     });
+    tc.settings.keyBindings.push({
+      action: "pause",
+      key: 75,
+      value: 0,
+      force: false,
+      predefined: true
+    });
     tc.settings.version = "0.5.3";
 
     chrome.storage.sync.set({
@@ -219,6 +237,18 @@ chrome.storage.sync.get(tc.settings, function (storage) {
     });
   }
 
+  if (
+    tc.settings.keyBindings.filter((x) => x.action == "pause").length == 0
+  ) {
+    tc.settings.keyBindings.push({
+      action: "pause",
+      key: 75,
+      value: 0,
+      force: false,
+      predefined: true
+    });
+  }
+
   log(
     "Loaded settings on " + location.hostname + " in " + getFrameContext() +
       ": enabled=" + tc.settings.enabled +
@@ -249,7 +279,9 @@ function defineVideoController() {
       return target.vsc;
     }
 
-    tc.mediaElements.push(target);
+    if (!tc.mediaElements.includes(target)) {
+      tc.mediaElements.push(target);
+    }
 
     this.video = target;
     this.parent = target.parentElement || parent;
@@ -359,25 +391,43 @@ function defineVideoController() {
     }
 
     var shadow = wrapper.attachShadow({ mode: "open" });
-    var shadowTemplate = `
-        <style>
-          @import "${chrome.runtime.getURL("shadow.css")}";
-        </style>
+    var style = document.createElement("style");
+    style.textContent = '@import "' + chrome.runtime.getURL("shadow.css") + '";';
+    shadow.appendChild(style);
 
-        <div id="controller" style="top:${top}; left:${left}; opacity:${
-      tc.settings.controllerOpacity
-    }">
-          <span data-action="drag" class="draggable">${speed}</span>
-          <span id="controls">
-            <button data-action="rewind" class="rw">«</button>
-            <button data-action="slower">&minus;</button>
-            <button data-action="faster">&plus;</button>
-            <button data-action="advance" class="rw">»</button>
-            <button data-action="display" class="hideButton">&times;</button>
-          </span>
-        </div>
-      `;
-    shadow.innerHTML = shadowTemplate;
+    var controller = document.createElement("div");
+    controller.id = "controller";
+    controller.style.top = top;
+    controller.style.left = left;
+    controller.style.opacity = tc.settings.controllerOpacity;
+
+    var draggable = document.createElement("span");
+    draggable.dataset.action = "drag";
+    draggable.classList.add("draggable");
+    draggable.textContent = speed;
+    controller.appendChild(draggable);
+
+    var controls = document.createElement("span");
+    controls.id = "controls";
+
+    [
+      { action: "rewind", className: "rw", label: "«" },
+      { action: "slower", label: "−" },
+      { action: "faster", label: "+" },
+      { action: "advance", className: "rw", label: "»" },
+      { action: "display", className: "hideButton", label: "×" }
+    ].forEach(function (control) {
+      var button = document.createElement("button");
+      button.dataset.action = control.action;
+      button.textContent = control.label;
+      if (control.className) {
+        button.classList.add(control.className);
+      }
+      controls.appendChild(button);
+    });
+
+    controller.appendChild(controls);
+    shadow.appendChild(controller);
     shadow.querySelector(".draggable").addEventListener(
       "mousedown",
       (e) => {
@@ -528,8 +578,9 @@ function initializeWhenReady(document) {
   if (isBlacklisted()) {
     return;
   }
-  window.addEventListener('load', () => {
-    initializeNow(window.document);
+  var win = document ? (document.defaultView || window) : window;
+  win.addEventListener('load', () => {
+    initializeNow(document || window.document);
   });
   if (document) {
     if (document.readyState === "complete") {
@@ -585,25 +636,40 @@ function initializeNow(document) {
   if (!window.vscMessageListenerAdded) {
     window.addEventListener("message", function(event) {
       if (event.data && event.data.vscCommand) {
+        if (event.data.originId && event.data.originId === vscFrameId) {
+          log("Ignoring frame command originating from self", 5);
+          return;
+        }
+
+        if (event.data.commandId && vscHandledCommands.has(event.data.commandId)) {
+          log("Ignoring duplicate frame command: " + event.data.commandId, 5);
+          return;
+        }
+
         log(
           "Received frame command action=" + event.data.action +
             ", value=" + event.data.value +
             ", mediaElements=" + tc.mediaElements.length +
+            ", url=" + location.href +
             ", frame=" + getFrameContext(),
           5
         );
         
+        if (event.data.commandId) {
+          recordHandledCommand(event.data.commandId);
+        }
+
         if (tc.mediaElements.length) {
           runAction(event.data.action, event.data.value);
         } else {
           log("Frame command ignored because no media elements are registered", 5);
+          
+          document.querySelectorAll("iframe").forEach(iframe => {
+            if (iframe.contentWindow !== event.source) {
+              try { iframe.contentWindow.postMessage(event.data, "*"); } catch (e) {}
+            }
+          });
         }
-        
-        document.querySelectorAll("iframe").forEach(iframe => {
-          if (iframe.contentWindow !== event.source) {
-            try { iframe.contentWindow.postMessage(event.data, "*"); } catch (e) {}
-          }
-        });
       }
     });
     window.vscMessageListenerAdded = true;
@@ -622,10 +688,7 @@ function initializeNow(document) {
     document.head.appendChild(link);
   }
   
-  var windowTargets = [window];
-  try {
-    if (inIframe()) windowTargets.push(window.top);
-  } catch (e) {}
+  var windowTargets = [document.defaultView || window];
 
   windowTargets.forEach(function (win) {
     try {
@@ -637,6 +700,8 @@ function initializeNow(document) {
             "Processing keydown event: keyCode=" + keyCode +
               ", target=" + event.target.nodeName +
               ", frame=" + getFrameContext() +
+              ", url=" + location.href +
+              ", winMatchesTop=" + (win === window.top) +
               ", mediaElements=" + tc.mediaElements.length,
             5
           );
@@ -683,20 +748,29 @@ function initializeNow(document) {
             if (tc.mediaElements.length) {
               runAction(item.action, item.value);
             } else {
-              log("Matched key binding but no media elements are registered", 4);
+              log("Matched key binding but no media elements are registered in this frame; broadcasting command", 5);
+
+              var commandId = vscFrameId + "-" + Math.random().toString(36).substring(2) + "-" + Date.now();
+              recordHandledCommand(commandId);
+
+              let payload = {
+                vscCommand: true,
+                action: item.action,
+                value: item.value,
+                originId: vscFrameId,
+                commandId: commandId
+              };
+
+              try {
+                if (window !== window.top) window.top.postMessage(payload, "*");
+              } catch (e) {}
+
+              document.querySelectorAll("iframe").forEach(iframe => {
+                try { iframe.contentWindow.postMessage(payload, "*"); } catch (e) {}
+              });
             }
 
-            let payload = { vscCommand: true, action: item.action, value: item.value };
-            
-            try {
-              if (window !== window.top) window.top.postMessage(payload, "*");
-            } catch (e) {}
-
-            document.querySelectorAll("iframe").forEach(iframe => {
-              try { iframe.contentWindow.postMessage(payload, "*"); } catch (e) {}
-            });
-
-            if (item.force === "true") {
+            if (item.force === true || item.force === "true") {
               log("Preventing default website key binding for action=" + item.action, 5);
               event.preventDefault();
               event.stopPropagation();
@@ -833,10 +907,14 @@ function setSpeed(video, speed) {
 
 function runAction(action, value, e) {
   var mediaTags = tc.mediaElements;
+  if (!e && action === "pause") {
+    mediaTags = getPauseTargets(mediaTags);
+  }
   log(
     "runAction begin: action=" + action +
       ", value=" + value +
       ", mediaElements=" + mediaTags.length +
+      ", url=" + location.href +
       ", frame=" + getFrameContext(),
     5
   );
@@ -859,10 +937,10 @@ function runAction(action, value, e) {
 
     if (!v.classList.contains("vsc-cancelled")) {
       if (action === "rewind") {
-        log("Rewind", 5);
+        log("Rewind: "+value, 5);
         v.currentTime -= value;
       } else if (action === "advance") {
-        log("Fast forward", 5);
+        log("Fast forward: "+value, 5);
         v.currentTime += value;
       } else if (action === "faster") {
         log("Increase speed", 5);
@@ -923,12 +1001,35 @@ function runAction(action, value, e) {
   log("runAction end: action=" + action, 5);
 }
 
+function getPauseTargets(mediaTags) {
+  var activeMediaTags = mediaTags.filter(function (v) {
+    return !v.paused && !v.ended;
+  });
+  if (activeMediaTags.length) {
+    return activeMediaTags;
+  }
+
+  var playableMediaTags = mediaTags.filter(function (v) {
+    return !v.ended && (v.currentSrc || v.src || v.readyState > 0);
+  });
+  if (playableMediaTags.length) {
+    return [playableMediaTags[0]];
+  }
+
+  return [];
+}
+
 function pause(v) {
   if (v.paused) {
-    log("Resuming video", 5);
-    v.play();
+    log("Resuming video", 4);
+    var playPromise = v.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(function (error) {
+        debugConsole("Unable to resume media playback", error);
+      });
+    }
   } else {
-    log("Pausing video", 5);
+    log("Pausing video", 4);
     v.pause();
   }
 }

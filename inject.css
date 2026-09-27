@@ -12,6 +12,7 @@
 .vsc-controller {
   /* In case of pages using `white-space: pre-line` (eg Discord), don't render vsc's whitespace */
   white-space: normal;
+  pointer-events: none !important;
 }
 
 /* Origin specific overrides */

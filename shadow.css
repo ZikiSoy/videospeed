@@ -22,6 +22,7 @@
 
   cursor: default;
   z-index: 9999999;
+  pointer-events: auto !important;
 }
 
 #controller:hover {

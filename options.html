@@ -23,9 +23,10 @@
           placeholder="press a key"
         />
         <input class="customValue" type="text" placeholder="value (0.10)" />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="slower">
@@ -39,9 +40,10 @@
           placeholder="press a key"
         />
         <input class="customValue" type="text" placeholder="value (0.10)" />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="faster">
@@ -55,9 +57,10 @@
           placeholder="press a key"
         />
         <input class="customValue" type="text" placeholder="value (0.10)" />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="rewind">
@@ -71,9 +74,10 @@
           placeholder="press a key"
         />
         <input class="customValue" type="text" placeholder="value (10)" />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="advance">
@@ -87,9 +91,10 @@
           placeholder="press a key"
         />
         <input class="customValue" type="text" placeholder="value (10)" />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="reset">
@@ -108,9 +113,10 @@
           placeholder="value (1.00)"
           disabled
         />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="fast">
@@ -124,9 +130,10 @@
           placeholder="press a key"
         />
         <input class="customValue" type="text" placeholder="value (1.80)" />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
       <div class="row customs" id="resetRatio">
@@ -145,9 +152,32 @@
           placeholder="value (0)"
           disabled
         />
+        <label class="forceLabel">Website keys</label>
         <select class="customForce">
-          <option value="false">Do not disable website key bindings</option>
-          <option value="true">Disable website key bindings</option>
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
+        </select>
+      </div>
+      <div class="row customs" id="pause">
+        <select class="customDo">
+          <option value="pause">Pause/resume</option>
+        </select>
+        <input
+          class="customKey"
+          type="text"
+          value=""
+          placeholder="press a key"
+        />
+        <input
+          class="customValue"
+          type="text"
+          placeholder="value (0)"
+          disabled
+        />
+        <label class="forceLabel">Website keys</label>
+        <select class="customForce">
+          <option value="false">Let website shortcuts also run</option>
+          <option value="true">Block website shortcuts</option>
         </select>
       </div>
 
@@ -202,7 +232,6 @@
 
     <button id="save">Save</button>
     <button id="restore">Restore Defaults</button>
-    <button id="experimental">Show Experimental Features</button>
 
     <div id="status"></div>
 

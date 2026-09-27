@@ -18,7 +18,8 @@ var tcDefaults = {
     { action: "advance", key: 88, value: 10, force: false, predefined: true }, // X
     { action: "reset", key: 82, value: 1, force: false, predefined: true }, // R
     { action: "fast", key: 71, value: 1.8, force: false, predefined: true }, // G
-    { action: "resetRatio", key: 65, value: 0, force: false, predefined: true } // A
+    { action: "resetRatio", key: 65, value: 0, force: false, predefined: true }, // A
+    { action: "pause", key: 75, value: 0, force: false, predefined: true } // K
   ],
   blacklist: `www.instagram.com
     twitter.com
@@ -134,31 +135,64 @@ function updateCustomShortcutInputText(inputItem, keyCode) {
 // List of custom actions for which customValue should be disabled
 var customActionsNoValues = ["pause", "muted", "mark", "jump", "display", "resetRatio"];
 
+function appendOption(select, value, label) {
+  var option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  select.appendChild(option);
+}
+
 function add_shortcut() {
-  var html = `<select class="customDo">
-    <option value="slower">Decrease speed</option>
-    <option value="faster">Increase speed</option>
-    <option value="rewind">Rewind</option>
-    <option value="advance">Advance</option>
-    <option value="reset">Reset speed</option>
-    <option value="fast">Preferred speed</option>
-    <option value="resetRatio">Reset video ratio</option>
-    <option value="muted">Mute</option>
-    <option value="pause">Pause</option>
-    <option value="mark">Set marker</option>
-    <option value="jump">Jump to marker</option>
-    <option value="display">Show/hide controller</option>
-    </select>
-    <input class="customKey" type="text" placeholder="press a key"/>
-    <input class="customValue" type="text" placeholder="value (0.10)"/>
-    <select class="customForce">
-    <option value="false">Do not disable website key bindings</option>
-    <option value="true">Disable website key bindings</option>
-    </select>
-    <button class="removeParent">X</button>`;
   var div = document.createElement("div");
   div.setAttribute("class", "row customs");
-  div.innerHTML = html;
+
+  var customDo = document.createElement("select");
+  customDo.classList.add("customDo");
+  [
+    ["slower", "Decrease speed"],
+    ["faster", "Increase speed"],
+    ["rewind", "Rewind"],
+    ["advance", "Advance"],
+    ["reset", "Reset speed"],
+    ["fast", "Preferred speed"],
+    ["resetRatio", "Reset video ratio"],
+    ["muted", "Mute"],
+    ["pause", "Pause"],
+    ["mark", "Set marker"],
+    ["jump", "Jump to marker"],
+    ["display", "Show/hide controller"]
+  ].forEach(function (item) {
+    appendOption(customDo, item[0], item[1]);
+  });
+  div.appendChild(customDo);
+
+  var customKey = document.createElement("input");
+  customKey.classList.add("customKey");
+  customKey.type = "text";
+  customKey.placeholder = "press a key";
+  div.appendChild(customKey);
+
+  var customValue = document.createElement("input");
+  customValue.classList.add("customValue");
+  customValue.type = "text";
+  customValue.placeholder = "value (0.10)";
+  div.appendChild(customValue);
+
+  var customForce = document.createElement("select");
+  customForce.classList.add("customForce");
+  appendOption(customForce, "false", "Let website shortcuts also run");
+  appendOption(customForce, "true", "Block website shortcuts");
+  var customForceLabel = document.createElement("label");
+  customForceLabel.classList.add("forceLabel");
+  customForceLabel.textContent = "Website keys";
+  div.appendChild(customForceLabel);
+  div.appendChild(customForce);
+
+  var removeButton = document.createElement("button");
+  removeButton.classList.add("removeParent");
+  removeButton.textContent = "X";
+  div.appendChild(removeButton);
+
   var customs_element = document.getElementById("customs");
   customs_element.insertBefore(
     div,
@@ -294,6 +328,17 @@ function restore_options() {
       });
     }
 
+    // ensure that there is a "pause" binding for upgrades from versions without it
+    if (storage.keyBindings.filter((x) => x.action == "pause").length == 0) {
+      storage.keyBindings.push({
+        action: "pause",
+        key: 75,
+        value: 0,
+        force: false,
+        predefined: true
+      });
+    }
+
     for (let i in storage.keyBindings) {
       var item = storage.keyBindings[i];
       if (item.predefined) {
@@ -351,12 +396,6 @@ function restore_defaults() {
   });
 }
 
-function show_experimental() {
-  document
-    .querySelectorAll(".customForce")
-    .forEach((item) => (item.style.display = "inline-block"));
-}
-
 document.addEventListener("DOMContentLoaded", function () {
   restore_options();
 
@@ -365,9 +404,6 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .getElementById("restore")
     .addEventListener("click", restore_defaults);
-  document
-    .getElementById("experimental")
-    .addEventListener("click", show_experimental);
 
   function eventCaller(event, className, funcName) {
     if (!event.target.classList || !event.target.classList.contains(className)) {

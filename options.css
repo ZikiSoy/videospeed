@@ -102,8 +102,14 @@ select {
 }
 
 .customForce {
-  display: none;
-  width: 250px;
+  display: inline-block;
+  width: 205px;
+}
+
+.forceLabel {
+  display: inline-block;
+  margin-left: 8px;
+  width: auto;
 }
 
 .customKey {
