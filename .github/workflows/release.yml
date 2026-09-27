@@ -75,7 +75,8 @@ jobs:
             --artifacts-dir dist/listed \
             --channel listed \
             --api-key "${AMO_JWT_ISSUER}" \
-            --api-secret "${AMO_JWT_SECRET}"
+            --api-secret "${AMO_JWT_SECRET}" \
+            --amo-metadata '{"version":{"license":"MIT"}}'
 
       - name: Build & Sign Unlisted .xpi for Direct Download
         if: ${{ env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' }}
