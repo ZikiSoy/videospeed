@@ -1,3 +1,10 @@
+.DS_Store
+local
+
+# IntelliJ IDEA
+.idea/
+node_modules
 Archive.zip
 options.sublime-project
 options.sublime-workspace
+release.sh
