@@ -70,13 +70,15 @@ jobs:
         run: |
           set -euo pipefail
 
+          echo '{"version":{"license":"MIT"}}' > amo-metadata.json
+
           web-ext sign \
             --source-dir build/extension \
             --artifacts-dir dist/listed \
             --channel listed \
             --api-key "${AMO_JWT_ISSUER}" \
             --api-secret "${AMO_JWT_SECRET}" \
-            --amo-metadata '{"version":{"license":"MIT"}}'
+            --amo-metadata amo-metadata.json
 
       - name: Build & Sign Unlisted .xpi for Direct Download
         if: ${{ env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' }}
