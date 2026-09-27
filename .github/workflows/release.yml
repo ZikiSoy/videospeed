@@ -65,28 +65,6 @@ jobs:
 
           mv dist/*.zip "dist/videospeed-firefox-${{ steps.extension.outputs.version }}.zip"
 
-      - name: Submit to Firefox Add-ons Store (Listed)
-        if: ${{ env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' }}
-        run: |
-          set -euo pipefail
-
-          cat << 'EOF' > amo-metadata.json
-          {
-            "categories": ["photos-music-videos"],
-            "version": {
-              "license": "MIT"
-            }
-          }
-          EOF
-
-          web-ext sign \
-            --source-dir build/extension \
-            --artifacts-dir dist/listed \
-            --channel listed \
-            --api-key "${AMO_JWT_ISSUER}" \
-            --api-secret "${AMO_JWT_SECRET}" \
-            --amo-metadata amo-metadata.json
-
       - name: Build & Sign Unlisted .xpi for Direct Download
         if: ${{ env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' }}
         run: |
@@ -128,5 +106,29 @@ jobs:
           body: |
             Firefox extension release for version ${{ steps.extension.outputs.version }}.
 
-            - **Store Release:** Submitted to Firefox Add-ons (AMO) for public listing review.
             - **Direct Install:** Download `videospeed-firefox-${{ steps.extension.outputs.version }}-signed.xpi` for standalone installation.
+            - **Store Release:** Submitted to Firefox Add-ons (AMO) for public listing review.
+
+      - name: Submit to Firefox Add-ons Store (Listed)
+        if: ${{ env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' }}
+        run: |
+          set -euo pipefail
+
+          cat << 'EOF' > amo-metadata.json
+          {
+            "categories": ["photos-music-videos"],
+            "version": {
+              "license": "MIT"
+            }
+          }
+          EOF
+
+          # --approval-timeout 0 submits to AMO and returns immediately without hanging on manual store review
+          web-ext sign \
+            --source-dir build/extension \
+            --artifacts-dir dist/listed \
+            --channel listed \
+            --approval-timeout 0 \
+            --api-key "${AMO_JWT_ISSUER}" \
+            --api-secret "${AMO_JWT_SECRET}" \
+            --amo-metadata amo-metadata.json
