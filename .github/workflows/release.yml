@@ -70,7 +70,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo '{"version":{"license":"MIT"}}' > amo-metadata.json
+          cat << 'EOF' > amo-metadata.json
+          {
+            "categories": ["photos-music-videos"],
+            "version": {
+              "license": "MIT"
+            }
+          }
+          EOF
 
           web-ext sign \
             --source-dir build/extension \
